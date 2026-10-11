@@ -169,7 +169,13 @@ textarea.wt:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px var
 /* ---------- Result sheet ---------- */
 .result-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:14px}
 #result-sheet{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:28px 30px;color:#1c2230}
-#result-sheet.exporting{width:780px;border:0;border-radius:0;padding:0}
+.pdf-sheet{width:700px;background:#fff;color:#1c2230;padding:0;font-size:13px}
+.pdf-sheet .rs-scroll{overflow:visible}
+.pdf-sheet .rs-tbl{table-layout:fixed;width:100%;font-size:11.5px}
+.pdf-sheet .rs-tbl td,.pdf-sheet .rs-tbl th{word-break:break-word;overflow-wrap:anywhere;padding:5px 6px}
+.pdf-sheet .rs-cards{gap:8px}
+.pdf-sheet .rs-card .val{font-size:20px}
+.pdf-sheet .rs-thumb{width:84px;height:63px}
 .rs-head{text-align:center;border-bottom:3px double var(--navy);padding-bottom:12px;margin-bottom:14px}
 .rs-zh{font-family:'Noto Sans SC';font-weight:800;font-size:21px;color:var(--navy)}
 .rs-vi{font-weight:700;letter-spacing:1px;color:var(--red);margin-top:2px;font-size:15px}
@@ -195,6 +201,8 @@ textarea.wt:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px var
 .rs-tbl tr.psg td{background:#fbfbfd;font-family:'Noto Sans SC';color:#3a4252;font-size:12.5px;line-height:1.7}
 .rs-tbl small{color:var(--muted)}
 .c-num{width:42px;text-align:center}
+.c-q{width:40%}.c-a{width:24%}.c-k{width:24%}
+.c-img{width:96px}.c-w{width:64px}
 .c-mk{width:42px;text-align:center}
 .mk-ok{color:var(--ok);font-weight:800;text-align:center}
 .mk-bad{color:var(--bad);font-weight:800;text-align:center}
@@ -774,7 +782,7 @@ function mk(n){ return grade(n)==='ok' ? '<td class="mk-ok">✓</td>' : '<td cla
 function row(n, content, student, key){
   return `<tr><td class="c-num">${n}</td><td class="zh">${content}</td><td class="zh">${student}</td><td class="zh">${key}</td>${mk(n)}</tr>`;
 }
-const TH = '<tr><th class="c-num">Câu</th><th>Câu hỏi</th><th>Bài làm</th><th>Đáp án</th><th class="c-mk">KQ</th></tr>';
+const TH = '<tr><th class="c-num">Câu</th><th class="c-q">Câu hỏi</th><th class="c-a">Bài làm</th><th class="c-k">Đáp án</th><th class="c-mk">KQ</th></tr>';
 const grp = t=>`<tr class="grp"><td colspan="5">${t}</td></tr>`;
 const fillLines = lines=>lines.map(l=>esc(l).replace('__','（　　）')).join('<br>');
 
@@ -834,7 +842,7 @@ function buildResult(){
   h += `<div class="rs-sec"><h3>三、书写 · Viết — Phần 1 (${W.ok}/${W.total})</h3><div class="rs-scroll"><table class="rs-tbl">${t}</table></div></div>`;
 
   // Viết phần 2
-  t = `<tr><th class="c-num">Câu</th><th>Tranh</th><th>Từ</th><th>Bài làm của thí sinh</th><th>Câu mẫu (tham khảo)</th><th class="rs-gv">Điểm GV</th></tr>`;
+  t = `<tr><th class="c-num">Câu</th><th class="c-img">Tranh</th><th class="c-w">Từ</th><th>Bài làm của thí sinh</th><th>Câu mẫu (tham khảo)</th><th class="rs-gv">Điểm GV</th></tr>`;
   W2.forEach(x=>{
     const v = ans(x.n);
     t += `<tr><td class="c-num">${x.n}</td><td><img class="rs-thumb" src="${x.img}" alt="" onerror="this.style.visibility='hidden'"></td>`+
@@ -861,19 +869,21 @@ async function downloadPDF(){
   btn.disabled = true; btn.textContent = 'Đang tạo PDF…';
   try{
     if(document.fonts && document.fonts.ready) await document.fonts.ready;
-    el.classList.add('exporting');
+    /* Dựng bản sao rộng cố định 700px (vừa khổ A4 trừ lề) để PDF không bị cắt chữ ở mép phải */
+    const sheet = document.createElement('div');
+    sheet.className = 'pdf-sheet';
+    sheet.innerHTML = el.innerHTML;
     await window.html2pdf().set({
-      margin:[10,10,12,10],
+      margin:[10,8,12,8],
       filename:`KetQua_HSK3_${fileSafe(state.name)}.pdf`,
       image:{type:'jpeg', quality:0.95},
-      html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff'},
+      html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff', scrollX:0, scrollY:0, windowWidth:1100},
       jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
       pagebreak:{mode:['css','legacy'], avoid:['tr','.rs-cards','.rs-sign','.rs-head']}
-    }).from(el).save();
+    }).from(sheet).save();
   }catch(e){
     await modal('Không tạo được PDF', '<p>Trình duyệt chưa tạo được file PDF. Hãy bấm nút <b>In</b> rồi chọn “Lưu dưới dạng PDF”.</p>', 'Đã hiểu', null);
   }finally{
-    el.classList.remove('exporting');
     btn.disabled = false; btn.textContent = 'Tải PDF';
   }
 }
